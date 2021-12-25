@@ -42,15 +42,17 @@ impl App {
         mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     ) -> Result<(), anyhow::Error> {
-        let mut reader = EventStream::new();
+        let mut input_eventstream = EventStream::new();
+        let mut input_event = input_eventstream.next().fuse();
         loop {
-            let mut event = reader.next().fuse();
-
             select! {
-                maybe_event = event => {
-                    match maybe_event {
-                        Some(Ok(event)) => {
-                            match input::handle_input_event(event, &mut self) {
+                maybe_input_event = input_event => {
+                    // next input event
+                    input_event = input_eventstream.next().fuse();
+
+                    match maybe_input_event {
+                        Some(Ok(input_event)) => {
+                            match input::handle_input_event(input_event, &mut self) {
                                 Ok(input_task) => match input_task {
                                     InputTask::Continue => (),
                                     InputTask::Quit => break,
