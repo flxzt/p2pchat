@@ -1,24 +1,25 @@
 use std::io::Stdout;
 
-use crate::connection::Connection;
+use crate::connection::{self, Connection};
 use crate::input::{self, InputTask};
 use crate::ui::{self, Ui};
 
 use anyhow::Context;
 use crossterm::event::EventStream;
 use futures::{select, FutureExt, StreamExt};
-use libp2p::swarm::SwarmEvent;
+use libp2p::PeerId;
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
 
 #[derive(Debug, Clone)]
 pub struct Message {
+    pub peer_id: PeerId,
     pub text: String,
 }
 
 impl Message {
-    pub fn new(text: String) -> Self {
-        Self { text }
+    pub fn new(text: String, peer_id: PeerId) -> Self {
+        Self { peer_id, text }
     }
 }
 
@@ -30,11 +31,13 @@ pub struct App {
 
 // Starting in IdleState
 impl App {
-    pub fn new() -> Result<Self, anyhow::Error> {
+    pub async fn new() -> Result<Self, anyhow::Error> {
         Ok(Self {
             ui: Ui::new(),
             history: vec![],
-            connection: Connection::new().context("Connection::new() failed in App::new()")?,
+            connection: Connection::new()
+                .await
+                .context("Connection::new() failed in App::new()")?,
         })
     }
 
@@ -44,13 +47,14 @@ impl App {
     ) -> Result<(), anyhow::Error> {
         let mut input_eventstream = EventStream::new();
         let mut input_event = input_eventstream.next().fuse();
+
         loop {
             select! {
                 maybe_input_event = input_event => {
                     // next input event
                     input_event = input_eventstream.next().fuse();
 
-                    match maybe_input_event {
+                     match maybe_input_event {
                         Some(Ok(input_event)) => {
                             match input::handle_input_event(input_event, &mut self) {
                                 Ok(input_task) => match input_task {
@@ -68,14 +72,11 @@ impl App {
                         None => break,
                     }
                 },
-                event = self.connection.swarm.select_next_some() => match event {
-                    SwarmEvent::NewListenAddr { address, .. } => {
-                        self.connection.push_log_entry(format!("Listening on {:?}", address).as_str());
-                    },
-                    SwarmEvent::Behaviour(event) => {
-                        self.connection.push_log_entry(format!("{:?}", event).as_str());
-                    },
-                    _ => {}
+                connection_event = self.connection.swarm.select_next_some() => match connection::handle_connection_event(connection_event, &mut self) {
+                    Ok(()) => {}
+                    Err(e) => {
+                        log::error!("handle_connection_event() failed with Err {}", e);
+                    }
                 }
             }
 

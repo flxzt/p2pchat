@@ -1,7 +1,7 @@
 pub mod app;
-pub mod ui;
 pub mod connection;
 pub mod input;
+pub mod ui;
 pub mod utils;
 
 use app::App;
@@ -11,7 +11,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::{error::Error, io};
-use tui::{backend::{CrosstermBackend}, Terminal};
+use tui::{backend::CrosstermBackend, Terminal};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let chat = App::new()?;
+    let chat = App::new().await?;
     let res = chat.run_app(&mut terminal).await;
 
     // restore terminal

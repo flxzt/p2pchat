@@ -12,7 +12,7 @@ pretty_env_logger = "0.3"
 tui = { version = "0.16", default-features = false, features = ["crossterm"] }
 crossterm = { version = "0.22", features = ["event-stream"] }
 regex = "1.5"
-libp2p = "0.41"
+libp2p = { version = "0.41", features = ["tcp-tokio", "mdns"] }
 futures = "0.3"
 unicode-width = "0.1"
-tokio = { version = "1", features = ["full"]}
+tokio = { version = "1", features = ["full"] }

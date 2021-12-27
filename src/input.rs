@@ -1,4 +1,6 @@
 use crossterm::event::{Event, KeyCode, KeyModifiers, MouseEventKind};
+use futures::executor::block_on;
+use libp2p::gossipsub::IdentTopic;
 use libp2p::Multiaddr;
 
 use crate::app::{App, Message};
@@ -42,7 +44,13 @@ pub fn handle_input_event_chat_page(event: Event, app: &mut App) -> Result<(), a
                 app.ui.chat_input.pop();
             }
             (KeyCode::Enter, KeyModifiers::NONE) => {
-                app.history.push(Message::new(app.ui.chat_input.clone()));
+                if let Err(e) = app.connection.swarm.behaviour_mut().publish(
+                    app.connection.current_topic.clone(),
+                    app.ui.chat_input.as_bytes(),
+                ) {
+                    app.connection.log.push(format!("Publish error: {:?}", e));
+                }
+                app.history.push(Message::new(app.ui.chat_input.clone(), *app.connection.swarm.local_peer_id()));
                 app.ui.chat_input.clear();
             }
             (KeyCode::Char('u'), KeyModifiers::CONTROL) => {
@@ -105,12 +113,19 @@ pub fn handle_input_event_connection_page(
         ConnectionPageFocus::RegenerateSwarm => {
             match event {
                 Event::Key(key_event) => match (key_event.code, key_event.modifiers) {
-                    (KeyCode::Enter, KeyModifiers::NONE) => match Connection::regenerate_swarm() {
-                        Ok(swarm) => app.connection.swarm = swarm,
-                        Err(e) => {
-                            log::error!("regenerate_swarm() failed with Err {}", e);
+                    (KeyCode::Enter, KeyModifiers::NONE) => {
+                        app.connection.current_topic = IdentTopic::new("test-net");
+                        let handle = tokio::runtime::Handle::current();
+                        let _guard = handle.enter();
+
+                        match block_on(Connection::regenerate_swarm(&app.connection.current_topic))
+                        {
+                            Ok(swarm) => app.connection.swarm = swarm,
+                            Err(e) => {
+                                log::error!("regenerate_swarm() failed with Err {}", e);
+                            }
                         }
-                    },
+                    }
                     _ => (),
                 },
                 _ => (),
