@@ -1,5 +1,4 @@
 use crossterm::event::{Event, KeyCode, KeyModifiers, MouseEventKind};
-use futures::executor::block_on;
 use libp2p::gossipsub::IdentTopic;
 use libp2p::Multiaddr;
 
@@ -50,7 +49,10 @@ pub fn handle_input_event_chat_page(event: Event, app: &mut App) -> Result<(), a
                 ) {
                     app.connection.log.push(format!("Publish error: {:?}", e));
                 }
-                app.history.push(Message::new(app.ui.chat_input.clone(), *app.connection.swarm.local_peer_id()));
+                app.history.push(Message::new(
+                    app.ui.chat_input.clone(),
+                    *app.connection.swarm.local_peer_id(),
+                ));
                 app.ui.chat_input.clear();
             }
             (KeyCode::Char('u'), KeyModifiers::CONTROL) => {
@@ -118,13 +120,13 @@ pub fn handle_input_event_connection_page(
                         let handle = tokio::runtime::Handle::current();
                         let _guard = handle.enter();
 
-                        match block_on(Connection::regenerate_swarm(&app.connection.current_topic))
-                        {
+                        app.connection.log.clear();
+                        match Connection::generate_swarm(&app.connection.current_topic) {
                             Ok(swarm) => app.connection.swarm = swarm,
-                            Err(e) => {
-                                log::error!("regenerate_swarm() failed with Err {}", e);
-                            }
-                        }
+                            Err(e) => app.connection.push_log_entry(
+                                format!("regenerate_swarm() failed with Err {}", e).as_str(),
+                            ),
+                        };
                     }
                     _ => (),
                 },

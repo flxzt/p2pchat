@@ -41,7 +41,7 @@ impl App {
         })
     }
 
-    pub async fn run_app(
+    pub async fn run(
         mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     ) -> Result<(), anyhow::Error> {

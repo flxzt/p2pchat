@@ -163,18 +163,21 @@ pub fn draw_chat_page<B: Backend>(frame: &mut Frame<B>, size: Rect, app: &mut ap
             let style = if message.peer_id == *app.connection.swarm.local_peer_id() {
                 Style::default().fg(Color::Green)
             } else {
-                Style::default().fg(Color::Red)
+                Style::default()
             };
 
-            ListItem::new(Span::styled(format!("{}: {}", message.peer_id, message.text), style))
+            ListItem::new(Span::styled(
+                format!("{}: {}", message.peer_id, message.text),
+                style,
+            ))
         })
         .collect::<Vec<ListItem>>();
-    let chat_history_list = List::new(chat_history_items)
-        .block(
-            Block::default()
-                .title(Span::styled("History", Style::default()))
-                .borders(Borders::ALL),
-        );
+
+    let chat_history_list = List::new(chat_history_items).block(
+        Block::default()
+            .title(Span::styled("History", Style::default()))
+            .borders(Borders::ALL),
+    );
     frame.render_widget(chat_history_list, chat_page_chunks[0]);
 
     // Chat Input

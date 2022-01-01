@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // create app and run it
     let chat = App::new().await?;
-    let res = chat.run_app(&mut terminal).await;
+    let res = chat.run(&mut terminal).await;
 
     // restore terminal
     disable_raw_mode()?;

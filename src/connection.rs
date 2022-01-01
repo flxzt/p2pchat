@@ -30,24 +30,20 @@ impl Connection {
         // Create a Gossipsub topic
         let current_topic = IdentTopic::new("test-net");
 
-        let swarm = Self::regenerate_swarm(&current_topic)
-            .await
-            .context("regenerate_swarm() failed in Connection::new() with Err {}")?;
-
-        Ok(Self {
-            swarm,
+        let connection = Self {
+            swarm: Self::generate_swarm(&current_topic)?,
             log: vec![],
             current_topic,
-        })
+        };
+
+        Ok(connection)
     }
 
     pub fn push_log_entry(&mut self, message: &str) {
         self.log.push(format!("{}", message));
     }
 
-    pub async fn regenerate_swarm(
-        topic: &gossipsub::IdentTopic,
-    ) -> Result<Swarm<Gossipsub>, anyhow::Error> {
+    pub fn generate_swarm(topic: &IdentTopic) -> Result<Swarm<Gossipsub>, anyhow::Error> {
         let id_keys = Keypair::generate_ed25519();
         let peer_id = PeerId::from(id_keys.public());
 
@@ -88,7 +84,7 @@ impl Connection {
                     .expect("Correct configuration");
 
             // subscribes to our topic
-            gossipsub.subscribe(&topic).unwrap();
+            gossipsub.subscribe(topic).unwrap();
 
             // build the swarm
             SwarmBuilder::new(transport, gossipsub, peer_id)
