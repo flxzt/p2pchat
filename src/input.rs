@@ -51,7 +51,7 @@ pub fn handle_input_event_chat_page(event: Event, app: &mut App) -> Result<(), a
                 }
                 app.history.push(Message::new(
                     app.ui.chat_input.clone(),
-                    *app.connection.swarm.local_peer_id(),
+                    Some(*app.connection.swarm.local_peer_id()),
                 ));
                 app.ui.chat_input.clear();
             }

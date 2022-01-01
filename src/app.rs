@@ -13,13 +13,13 @@ use tui::Terminal;
 
 #[derive(Debug, Clone)]
 pub struct Message {
-    pub peer_id: PeerId,
+    pub source_peer_id: Option<PeerId>,
     pub text: String,
 }
 
 impl Message {
-    pub fn new(text: String, peer_id: PeerId) -> Self {
-        Self { peer_id, text }
+    pub fn new(text: String, source_peer_id: Option<PeerId>) -> Self {
+        Self { source_peer_id, text }
     }
 }
 

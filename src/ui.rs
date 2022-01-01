@@ -160,14 +160,23 @@ pub fn draw_chat_page<B: Backend>(frame: &mut Frame<B>, size: Rect, app: &mut ap
         .history
         .iter()
         .map(|message| {
-            let style = if message.peer_id == *app.connection.swarm.local_peer_id() {
-                Style::default().fg(Color::Green)
+            let style = if let Some(source_peer_id) = message.source_peer_id {
+                if source_peer_id == *app.connection.swarm.local_peer_id() {
+                    Style::default().fg(Color::Green)
+                } else {
+                    Style::default()
+                }
             } else {
                 Style::default()
             };
+            let source_peer_id_string = if let Some(source_peer_id) = message.source_peer_id {
+                format!("{}", source_peer_id)
+            } else {
+                String::from("unknown source")
+            };
 
             ListItem::new(Span::styled(
-                format!("{}: {}", message.peer_id, message.text),
+                format!("{}: {}", source_peer_id_string, message.text),
                 style,
             ))
         })

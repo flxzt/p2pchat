@@ -129,7 +129,7 @@ pub fn handle_connection_event(
             ));
             app.history.push(Message::new(
                 String::from_utf8_lossy(&message.data).to_string(),
-                peer_id,
+                message.source,
             ))
         }
         SwarmEvent::Behaviour(event) => {
