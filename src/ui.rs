@@ -170,7 +170,8 @@ pub fn draw_chat_page<B: Backend>(frame: &mut Frame<B>, size: Rect, app: &mut ap
                 Style::default()
             };
             let source_peer_id_string = if let Some(source_peer_id) = message.source_peer_id {
-                format!("{}", source_peer_id)
+                let source_peer_id = source_peer_id.to_string();
+                format!("{}..{}", &source_peer_id[..4], &source_peer_id[source_peer_id.chars().count() - 5 ..])
             } else {
                 String::from("unknown source")
             };
