@@ -169,10 +169,10 @@ pub fn draw_chat_page<B: Backend>(frame: &mut Frame<B>, size: Rect, app: &mut ap
                 if source_peer_id == *app.connection.swarm.local_peer_id() {
                     Style::default().fg(Color::Green)
                 } else {
-                    Style::default()
+                    Style::default().fg(Color::Gray)
                 }
             } else {
-                Style::default()
+                Style::default().fg(Color::Gray)
             };
             let mut message_id_string = if let Some(source_peer_id) = message.source_peer_id {
                 let source_peer_id = source_peer_id.to_string();
