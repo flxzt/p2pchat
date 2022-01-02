@@ -56,8 +56,8 @@ impl App {
 
         loop {
             select! {
-                maybe_input_event = &mut input_eventstream.select_next_some() => {
-                     match maybe_input_event {
+                input_event = &mut input_eventstream.select_next_some() => {
+                     match input_event {
                         Ok(input_event) => {
                             match input::handle_input_event(input_event, &mut self) {
                                 Ok(input_task) => match input_task {
@@ -65,19 +65,19 @@ impl App {
                                     InputTask::Quit => break,
                                 },
                                 Err(e) => {
-                                    log::error!("handle_input_event() failed with Err '{}'", e);
+                                    log::error!("handle_input_event() failed with Err `{}`", e);
                                 }
                             }
                         }
                         Err(e) => {
-                            log::error!("Err {}", e);
+                            log::error!("input_event is Err `{}`", e);
                         }
                     }
                 },
                 connection_event = self.connection.swarm.select_next_some() => match connection::handle_connection_event(connection_event, &mut self) {
                     Ok(()) => {}
                     Err(e) => {
-                        log::error!("handle_connection_event() failed with Err {}", e);
+                        log::error!("handle_connection_event() failed with Err `{}`", e);
                     }
                 }
             }
