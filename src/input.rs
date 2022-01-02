@@ -2,7 +2,7 @@ use crossterm::event::{Event, KeyCode, KeyModifiers, MouseEventKind};
 use libp2p::gossipsub::IdentTopic;
 use libp2p::Multiaddr;
 
-use crate::app::{App, Message};
+use crate::app::{App, ChatMessage};
 use crate::connection::Connection;
 use crate::ui::{ConnectionPageFocus, CycleFocus, PageFocus};
 use crate::utils;
@@ -43,15 +43,24 @@ pub fn handle_input_event_chat_page(event: Event, app: &mut App) -> Result<(), a
                 app.ui.chat_input.pop();
             }
             (KeyCode::Enter, KeyModifiers::NONE) => {
+                let nick = if &app.ui.nick_input == "" {
+                    None
+                } else {
+                    Some(app.ui.nick_input.clone())
+                };
+                let chat_message = ChatMessage::new(None, nick.clone(), app.ui.chat_input.clone());
+                let chat_message_ser = serde_json::to_string(&chat_message)?;
                 if let Err(e) = app.connection.swarm.behaviour_mut().publish(
                     app.connection.current_topic.clone(),
-                    app.ui.chat_input.as_bytes(),
+                    chat_message_ser.as_bytes(),
                 ) {
-                    app.connection.log.push(format!("Publish error: {:?}", e));
-                }
-                app.history.push(Message::new(
-                    app.ui.chat_input.clone(),
+                    app.connection.push_log_entry(&format!("publish() message failed with Err `{}`", e));
+                };
+
+                app.history.push(ChatMessage::new(
                     Some(*app.connection.swarm.local_peer_id()),
+                    nick,
+                    app.ui.chat_input.clone(),
                 ));
                 app.ui.chat_input.clear();
             }
@@ -162,6 +171,20 @@ pub fn handle_input_event_connection_page(
                                 );
                             }
                         }
+                    }
+                    _ => (),
+                },
+                _ => (),
+            };
+        }
+        ConnectionPageFocus::NickInputField => {
+            match event {
+                Event::Key(key_event) => match (key_event.code, key_event.modifiers) {
+                    (KeyCode::Char(c), KeyModifiers::NONE | KeyModifiers::SHIFT) => {
+                        app.ui.nick_input.push(c);
+                    }
+                    (KeyCode::Backspace, KeyModifiers::NONE) => {
+                        app.ui.nick_input.pop();
                     }
                     _ => (),
                 },

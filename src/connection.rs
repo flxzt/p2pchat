@@ -13,10 +13,10 @@ use libp2p::identity::Keypair;
 use libp2p::swarm::{SwarmBuilder, SwarmEvent};
 use libp2p::{gossipsub, mplex, noise, tcp, Multiaddr, PeerId, Swarm, Transport};
 
-use crate::app::{App, Message};
+use crate::app::{App, ChatMessage};
 
 pub enum Transmission {
-    Message { message: Message },
+    Message { message: ChatMessage },
 }
 
 pub struct Connection {
@@ -127,10 +127,11 @@ pub fn handle_connection_event(
                 id,
                 peer_id
             ));
-            app.history.push(Message::new(
-                String::from_utf8_lossy(&message.data).to_string(),
-                message.source,
-            ))
+            let mut chat_message: ChatMessage =
+                serde_json::from_str(&String::from_utf8_lossy(&message.data).to_string())?;
+
+            chat_message.source_peer_id = message.source;
+            app.history.push(chat_message);
         }
         SwarmEvent::Behaviour(event) => {
             app.connection

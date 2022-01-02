@@ -29,6 +29,7 @@ pub enum ConnectionPageFocus {
     ConnectionLog = 0,
     RegenerateSwarm,
     AddrInputField,
+    NickInputField,
 }
 
 impl CycleFocus for ConnectionPageFocus {
@@ -36,13 +37,15 @@ impl CycleFocus for ConnectionPageFocus {
         match self {
             Self::ConnectionLog => Self::RegenerateSwarm,
             Self::RegenerateSwarm => Self::AddrInputField,
-            Self::AddrInputField => Self::ConnectionLog,
+            Self::AddrInputField => Self::NickInputField,
+            Self::NickInputField => Self::ConnectionLog,
         }
     }
 
     fn prev(self) -> Self {
         match self {
-            Self::ConnectionLog => Self::AddrInputField,
+            Self::ConnectionLog => Self::NickInputField,
+            Self::NickInputField => Self::AddrInputField,
             Self::RegenerateSwarm => Self::ConnectionLog,
             Self::AddrInputField => Self::RegenerateSwarm,
         }
@@ -71,6 +74,7 @@ pub struct Ui {
 
     pub chat_input: String,
     pub addr_input: String,
+    pub nick_input: String,
     pub connection_log_allocation: Option<Rect>,
     pub connection_log_liststate: ListState,
 }
@@ -85,6 +89,7 @@ impl Ui {
             connection_page_focus: ConnectionPageFocus::AddrInputField,
             chat_input: String::from(""),
             addr_input: String::from(""),
+            nick_input: String::from(""),
             connection_log_allocation: None,
             connection_log_liststate,
         }
@@ -169,15 +174,22 @@ pub fn draw_chat_page<B: Backend>(frame: &mut Frame<B>, size: Rect, app: &mut ap
             } else {
                 Style::default()
             };
-            let source_peer_id_string = if let Some(source_peer_id) = message.source_peer_id {
+            let mut message_id_string = if let Some(source_peer_id) = message.source_peer_id {
                 let source_peer_id = source_peer_id.to_string();
-                format!("{}..{}", &source_peer_id[..4], &source_peer_id[source_peer_id.chars().count() - 5 ..])
+                format!(
+                    "{}..{}",
+                    &source_peer_id[..4],
+                    &source_peer_id[source_peer_id.chars().count() - 5..]
+                )
             } else {
                 String::from("unknown source")
             };
+            if let Some(nick) = message.nick.as_ref() {
+                message_id_string = format!("{} ({})", message_id_string, nick)
+            };
 
             ListItem::new(Span::styled(
-                format!("{}: {}", source_peer_id_string, message.text),
+                format!("{}: {}", message_id_string, message.text),
                 style,
             ))
         })
@@ -217,6 +229,7 @@ pub fn draw_connection_page<B: Backend>(frame: &mut Frame<B>, size: Rect, app: &
         .constraints(
             [
                 Constraint::Min(3),
+                Constraint::Length(3),
                 Constraint::Length(3),
                 Constraint::Length(3),
             ]
@@ -294,9 +307,32 @@ pub fn draw_connection_page<B: Backend>(frame: &mut Frame<B>, size: Rect, app: &
         };
     let addr_input_field = Paragraph::new(addr_input_span).block(
         Block::default()
-            .title(Span::styled("Connect to address", addr_input_field_style))
+            .title(Span::styled("Connect to Multiaddress", addr_input_field_style))
             .borders(Borders::ALL)
             .border_type(BorderType::Plain),
     );
     frame.render_widget(addr_input_field, connection_page_chunks[2]);
+
+    // Nickname Input Field
+    let nick_input_span = Span::styled(app.ui.nick_input.as_str(), Style::default());
+    let nick_input_field_style =
+        if app.ui.connection_page_focus == ConnectionPageFocus::NickInputField {
+            // Chat Input paragraph
+            frame.set_cursor(
+                // Put cursor past the end of the input text
+                connection_page_chunks[3].x + app.ui.nick_input.width() as u16 + 1,
+                // Move one line down, from the border to the input line
+                connection_page_chunks[3].y + 1,
+            );
+            Style::default().add_modifier(Modifier::UNDERLINED)
+        } else {
+            Style::default()
+        };
+    let nick_input_field = Paragraph::new(nick_input_span).block(
+        Block::default()
+            .title(Span::styled("Nickname", nick_input_field_style))
+            .borders(Borders::ALL)
+            .border_type(BorderType::Plain),
+    );
+    frame.render_widget(nick_input_field, connection_page_chunks[3]);
 }

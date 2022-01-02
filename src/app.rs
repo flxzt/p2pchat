@@ -6,26 +6,33 @@ use crate::ui::{self, Ui};
 
 use anyhow::Context;
 use crossterm::event::EventStream;
-use futures::{select, FutureExt, StreamExt};
+use futures::{select, StreamExt};
 use libp2p::PeerId;
+use serde::{Deserialize, Serialize};
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
 
-#[derive(Debug, Clone)]
-pub struct Message {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessage {
+    #[serde(skip)]
     pub source_peer_id: Option<PeerId>,
+    pub nick: Option<String>,
     pub text: String,
 }
 
-impl Message {
-    pub fn new(text: String, source_peer_id: Option<PeerId>) -> Self {
-        Self { source_peer_id, text }
+impl ChatMessage {
+    pub fn new(source_peer_id: Option<PeerId>, nick: Option<String>, text: String) -> Self {
+        Self {
+            source_peer_id,
+            nick,
+            text,
+        }
     }
 }
 
 pub struct App {
     pub ui: Ui,
-    pub history: Vec<Message>,
+    pub history: Vec<ChatMessage>,
     pub connection: Connection,
 }
 
@@ -45,31 +52,26 @@ impl App {
         mut self,
         terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     ) -> Result<(), anyhow::Error> {
-        let mut input_eventstream = EventStream::new();
-        let mut input_event = input_eventstream.next().fuse();
+        let mut input_eventstream = EventStream::new().fuse();
 
         loop {
             select! {
-                maybe_input_event = input_event => {
-                    // next input event
-                    input_event = input_eventstream.next().fuse();
-
+                maybe_input_event = &mut input_eventstream.select_next_some() => {
                      match maybe_input_event {
-                        Some(Ok(input_event)) => {
+                        Ok(input_event) => {
                             match input::handle_input_event(input_event, &mut self) {
                                 Ok(input_task) => match input_task {
                                     InputTask::Continue => (),
                                     InputTask::Quit => break,
                                 },
                                 Err(e) => {
-                                    log::error!("handle_input_event() returned Err '{}'", e);
+                                    log::error!("handle_input_event() failed with Err '{}'", e);
                                 }
                             }
                         }
-                        Some(Err(e)) => {
+                        Err(e) => {
                             log::error!("Err {}", e);
                         }
-                        None => break,
                     }
                 },
                 connection_event = self.connection.swarm.select_next_some() => match connection::handle_connection_event(connection_event, &mut self) {
